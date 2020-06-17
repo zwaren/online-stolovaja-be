@@ -1,9 +1,14 @@
-from rest_framework import viewsets
+from django.contrib.auth.models import User
+from rest_framework import status, viewsets
 from rest_framework.response import Response
 
-from .models import DishType, Dish, ScheduleItem, Order
-from .serializers import DishTypeSerializer, DishSerializer, ScheduleItemSerializer, OrderSerializer
-from .permissions import IsUser, IsStaff, IsCook, IsAdmin
+from auth_service.serializers import UserSerializer
+
+from .models import Dish, DishType, Order, ScheduleItem
+from .permissions import IsAdmin, IsCook, IsStaff, IsUser
+from .serializers import (DishSerializer, DishTypeSerializer, OrderSerializer,
+                          ScheduleItemSerializer)
+
 
 class DishTypeViewSet(viewsets.ModelViewSet):
     serializer_class = DishTypeSerializer
@@ -61,3 +66,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         else:
             permission_classes = [IsAdmin]
         return [permission() for permission in permission_classes]
+    
+    def create(self, request):
+        data = {
+            'staff': User.objects.get(username=request.user.username).id, 
+            'schedule_item': request.data['schedule_item']
+        }
+        serializer = self.get_serializer_class()(data=data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
