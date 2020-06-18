@@ -1,3 +1,5 @@
+import datetime
+
 from django.contrib.auth.models import User
 from rest_framework import status, viewsets
 from rest_framework.response import Response
@@ -52,6 +54,14 @@ class ScheduleItemViewSet(viewsets.ModelViewSet):
             permission_classes = [IsAdmin]
         return [permission() for permission in permission_classes]
 
+    def list(self, request):
+        date = self.request.query_params.get('date', None)
+        if date is not None:
+            date = datetime.date(*[int(i) for i in date.split('-')])
+            queryset = self.get_queryset().filter(date=date)
+            serializer = self.get_serializer_class()(queryset, many=True).data
+            return Response(serializer)
+        return Response(status=status.HTTP_400_BAD_REQUEST)
 
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class = OrderSerializer
@@ -62,7 +72,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         if self.action in ['list', 'retrieve']:
             permission_classes = [IsCook]
         elif self.action in ['create', 'update']:
-            permission_classes = [IsStaff]
+            permission_classes = [IsStaff, IsCook]
         else:
             permission_classes = [IsAdmin]
         return [permission() for permission in permission_classes]
